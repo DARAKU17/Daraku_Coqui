@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chronovoice"
+version = "0.1.0"
+description = "A local AI narration toolkit built on Coqui XTTS v2."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "ChronoVoice Contributors" }]
+keywords = ["tts", "xtts", "coqui", "voice-cloning", "narration", "audio", "fastapi"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.6",
+  "PyYAML>=6.0",
+  "typer>=0.12",
+  "rich>=13.0",
+  "pydub>=0.25.1",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+# Heavy model stack for the Coqui XTTS backend.
+xtts = [
+  "TTS>=0.22.0",
+  "torch>=2.1",
+]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+  "ruff>=0.4",
+]
+
+[project.scripts]
+chronovoice = "chronovoice.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chronovoice*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "PLC", "PERF"]
+ignore = ["B008", "PLC0415"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

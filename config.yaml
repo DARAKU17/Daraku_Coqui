@@ -1,0 +1,15 @@
+backend:
+  name: coqui
+  device: cpu
+  model_path: null
+
+pipeline:
+  chunk_size: 400
+  pause_length: 350
+  pronunciation_path: null
+
+language: en
+voice: daraku
+output_dir: output
+voices_dir: voices
+sample_rate: 24000

@@ -1,0 +1,11 @@
+🎙️ ChronoVoice: My Narration
+
+Sounds impossible? Here's the twist. I built my very own clone voice from a
+short reference recording, and now Timeless Text Like this one — full of
+hard-to-say names like pareidolia, Jakobovits, Mariotte and Titchener — is
+read aloud exactly the way I speak.
+
+Imagine a narrator that never needs a studio. Congratulations, you are now
+listening to your own voice read your words. Natural pauses land where a
+human would breathe, and proper nouns are pronounced correctly thanks to
+the pronunciation dictionary.
