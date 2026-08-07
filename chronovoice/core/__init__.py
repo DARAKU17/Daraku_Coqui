@@ -8,6 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from chronovoice.core.constants import (
+    MAX_REFERENCE_SECONDS,
+    MIN_REFERENCE_SECONDS,
+    REFERENCE_SAMPLE_RATE,
+)
 from chronovoice.core.exceptions import (
     BackendNotLoaded,
     ChronoVoiceError,
@@ -46,4 +51,7 @@ __all__ = [
     "InvalidReferenceAudio",
     "UnsupportedLanguage",
     "GenerationFailed",
+    "REFERENCE_SAMPLE_RATE",
+    "MIN_REFERENCE_SECONDS",
+    "MAX_REFERENCE_SECONDS",
 ]

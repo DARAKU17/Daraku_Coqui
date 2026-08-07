@@ -56,7 +56,7 @@ def voices_list() -> None:
 @voices_app.command("add")
 def voices_add(
     name: str = typer.Argument(..., help="Name for the new voice."),
-    reference: Path = typer.Argument(..., help="Path to the reference wav."),
+    reference: Path = typer.Argument(..., help="Path to the reference audio (mp3/wav/ogg)."),
     language: str = typer.Option("en", "--language", "-l", help="Language code."),
     description: str = typer.Option("", "--description", "-d", help="Voice description."),
     sample_rate: int = typer.Option(22050, "--sample-rate", help="Sample rate in Hz."),

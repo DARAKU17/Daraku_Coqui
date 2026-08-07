@@ -16,11 +16,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
+from chronovoice.core.constants import (
+    MAX_REFERENCE_SECONDS,
+    MIN_REFERENCE_SECONDS,
+    REFERENCE_SAMPLE_RATE,
+)
 from chronovoice.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -28,11 +33,6 @@ logger = get_logger(__name__)
 DEFAULT_CONFIG_NAME: str = "config.yaml"
 DEFAULT_OUTPUT_DIR_NAME: str = "output"
 DEFAULT_VOICES_DIR_NAME: str = "voices"
-
-#: Standard sample rate for voice cloning reference audio (Hz).
-REFERENCE_SAMPLE_RATE: int = 22050
-#: Minimum length of a reference clip in seconds.
-MIN_REFERENCE_SECONDS: float = 3.0
 
 
 class BackendSettings(BaseModel):
@@ -84,7 +84,8 @@ class Settings(BaseModel):
     voices_dir: str = DEFAULT_VOICES_DIR_NAME
     sample_rate: int = Field(default=24000, ge=8000)
 
-    _config_path: ClassVar[Path | None] = None
+    #: Location of the YAML file this settings instance was loaded from.
+    _config_path: Path | None = PrivateAttr(default=None)
 
     @field_validator("output_dir", "voices_dir")
     @classmethod
@@ -175,11 +176,12 @@ class SettingsStore:
                 raise FileNotFoundError(f"Config file not found: {config_path}")
             with config_path.open("r", encoding="utf-8") as handle:
                 data = yaml.safe_load(handle) or {}
-            Settings._config_path = config_path
             logger.info("Loaded configuration from %s", config_path)
 
         merged = self._deep_merge(Settings().model_dump(), data)
         self._settings = Settings.model_validate(merged)
+        if config_path is not None:
+            self._settings._config_path = config_path
         return self._settings
 
     @staticmethod

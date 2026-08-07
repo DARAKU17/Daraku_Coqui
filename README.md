@@ -145,6 +145,14 @@ Install the Coqui XTTS backend (heavy — pulls `torch` and the `TTS` package):
 pip install -e ".[xtts]"
 ```
 
+**System dependency**: audio conversion (MP3 → WAV) uses pydub, which shells
+out to the `ffmpeg` binary. Install it with your package manager:
+
+```bash
+sudo apt install ffmpeg          # Debian / Ubuntu
+brew install ffmpeg              # macOS
+```
+
 On a CUDA machine you may prefer to install PyTorch first, then the XTTS extra:
 
 ```bash
@@ -190,17 +198,23 @@ You can point to a different config file via the `CHRONOVOICE_CONFIG` environmen
 
 ## Add your voice
 
-1. Record **3–30 seconds** of clean speech as a **.wav** file (22 050 Hz mono works well). Little to no background noise.
+1. Record **3–30 seconds** of clean speech. Little to no background noise.
+   Any common format works (`.wav`, `.mp3`, `.ogg`, ...) — ChronoVoice
+   automatically decodes the clip, keeps only the **first 30 seconds**, and
+   resamples it to a mono 22 050 Hz WAV for storage. The target sample rate
+   can be changed with `--sample-rate`.
 2. Register it with the CLI (name and clip path are positional):
 
 ```bash
 chronovoice voices add myname \
-  /path/to/my_clip.wav \
+  /path/to/my_long_recording.mp3 \
   --language en \
+  --sample-rate 22050 \
   --description "My narration voice"
 ```
 
-Or copy into an existing voice:
+Or copy into an existing voice — the copy is **not** converted, so prefer the
+`add` command when your source is an MP3 or longer than 30 seconds:
 
 ```bash
 cp /path/to/my_clip.wav voices/daraku/reference.wav

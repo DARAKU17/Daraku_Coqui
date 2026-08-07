@@ -131,6 +131,7 @@ def make_service(settings, backend: FakeBackend) -> TTSService:
     Returns:
         A configured service.
     """
+    settings.backend.name = "fake"
     service = TTSService(settings)
     manager = service._backends
     manager._backend = backend

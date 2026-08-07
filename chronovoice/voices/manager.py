@@ -10,9 +10,12 @@ from __future__ import annotations
 import json
 import struct
 from pathlib import Path
+from typing import Callable
 
+from chronovoice.core.constants import MAX_REFERENCE_SECONDS
 from chronovoice.core.exceptions import InvalidReferenceAudio, VoiceNotFound
 from chronovoice.core.logger import get_logger
+from chronovoice.utils.audio import read_wav_duration, read_wav_sample_rate
 from chronovoice.voices.models import VoiceMetadata
 
 logger = get_logger(__name__)
@@ -22,22 +25,39 @@ REFERENCE_FILENAME: str = "reference.wav"
 #: Standard name of the metadata file within a voice directory.
 METADATA_FILENAME: str = "metadata.json"
 
+# Signature of an audio conversion callable: (source, target, sample_rate, max_seconds) -> Path.
+ReferenceConverter = Callable[[Path, Path, int, float], Path]
+
 
 class VoiceManager:
     """Discovers and manages voices inside a directory.
 
     Args:
         voices_dir: Root directory that contains one subdirectory per voice.
+        converter: Optional callable that normalizes a source clip into a
+            reference WAV. Defaults to :func:`prepare_reference`.
     """
 
-    def __init__(self, voices_dir: str | Path) -> None:
+    def __init__(
+        self,
+        voices_dir: str | Path,
+        converter: ReferenceConverter | None = None,
+    ) -> None:
         """Initialise the manager with a voices directory.
 
         Args:
             voices_dir: Directory containing voice subdirectories.
+            converter: Optional conversion callable; defaults to the
+                standard reference preparation routine.
         """
         self._voices_dir: Path = Path(voices_dir)
         self._cache: dict[str, VoiceMetadata] | None = None
+        self._max_seconds: float = MAX_REFERENCE_SECONDS
+        if converter is None:
+            from chronovoice.utils.audio import prepare_reference
+
+            converter = prepare_reference
+        self._converter: ReferenceConverter = converter
 
     def list(self, force_reload: bool = False) -> list[VoiceMetadata]:
         """List all registered voices.
@@ -91,18 +111,22 @@ class VoiceManager:
     ) -> VoiceMetadata:
         """Register a new voice from a reference clip and target directory.
 
+        The source clip is decoded, trimmed to the configured maximum
+        duration and resampled to ``sample_rate`` before storage.
+
         Args:
             voice_name: Name of the new voice.
-            reference_audio: Source audio clip to copy for the voice.
+            reference_audio: Source audio clip (any format) to normalize.
             language: Language code of the clip.
             description: Optional human readable description.
-            sample_rate: Sample rate of the provided clip.
+            sample_rate: Target sample rate in Hz for the stored reference.
 
         Returns:
             The new :class:`VoiceMetadata`.
 
         Raises:
-            InvalidReferenceAudio: If the source clip is missing.
+            InvalidReferenceAudio: If the source clip is missing or cannot
+                be converted.
         """
         source = Path(reference_audio)
         if not source.is_file():
@@ -111,7 +135,7 @@ class VoiceManager:
         voice_dir = self._voices_dir / voice_name.lower()
         voice_dir.mkdir(parents=True, exist_ok=True)
         target = voice_dir / REFERENCE_FILENAME
-        target.write_bytes(source.read_bytes())
+        self._converter(source, target, sample_rate, self._max_seconds)
 
         metadata = VoiceMetadata(
             voice_name=voice_name,
@@ -119,6 +143,7 @@ class VoiceManager:
             description=description,
             sample_rate=sample_rate,
         )
+        self._validate_converted(target, metadata)
         self._write_metadata(voice_dir, metadata)
         self._cache = None
         logger.info(
@@ -156,6 +181,38 @@ class VoiceManager:
                 voice.voice_name,
                 actual_rate,
                 voice.sample_rate,
+            )
+        duration = read_wav_duration(reference)
+        if duration > self._max_seconds:
+            raise InvalidReferenceAudio(
+                f"Reference audio for '{voice.voice_name}' is {duration:.1f}s; "
+                f"max allowed is {self._max_seconds:.0f}s"
+            )
+
+    def _validate_converted(self, reference: Path, voice: VoiceMetadata) -> None:
+        """Validate the freshly converted reference clip.
+
+        Args:
+            reference: Path to the stored reference wav.
+            voice: The voice the reference belongs to.
+
+        Raises:
+            InvalidReferenceAudio: If the produced file does not meet the
+                configured sample rate or duration constraints.
+        """
+        if not reference.is_file():
+            raise InvalidReferenceAudio(f"Converted reference not found: {reference}")
+        actual_rate = read_wav_sample_rate(reference)
+        if actual_rate != voice.sample_rate:
+            raise InvalidReferenceAudio(
+                f"Converted reference sample rate {actual_rate} does not match "
+                f"requested {voice.sample_rate}"
+            )
+        duration = read_wav_duration(reference)
+        if duration > self._max_seconds:
+            raise InvalidReferenceAudio(
+                f"Converted reference is {duration:.1f}s; max allowed is "
+                f"{self._max_seconds:.0f}s"
             )
 
     @staticmethod
